@@ -12,10 +12,8 @@ class AddContactController: UIViewController {
 
     let addContactView = AddContactView()
     var contactToEdit: Contact?
-  //  let mainScreenController = ViewController()
     let notificationCenter = NotificationCenter.default
     var edit: Bool = false
-  //  var detailsController = ContactDetailsControllerViewController()
     
     override func loadView() {
         view = addContactView
@@ -47,10 +45,8 @@ class AddContactController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-            // Clear fields initially
         clearAddViewFields()
             
-            // Then initialize fields if editing
         if edit {
             initializeContactFields()
         }
@@ -86,7 +82,6 @@ class AddContactController: UIViewController {
                 notificationCenter.post(name: .dataFromAddContactScreen, object: contact)
                 navigationController?.popViewController(animated: true)
             }
-            
                     
             } else{
                 print("Unable to fetch data")
@@ -251,6 +246,5 @@ class AddContactController: UIViewController {
         
         present(alert, animated: true)
     }
-
 
 }

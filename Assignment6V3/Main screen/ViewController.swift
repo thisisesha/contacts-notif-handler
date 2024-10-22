@@ -71,11 +71,8 @@ class ViewController: UIViewController {
             let updatedContact = userInfo["updatedContact"] as? Contact,
             let oldContactName = userInfo["oldContactName"] as? String {
                 
-                // Find the contact by the old name (not the new one)
             if let index = contactNames.firstIndex(of: oldContactName) {
-                    // Update the contact name in the contactNames array
                 contactNames[index] = updatedContact.name
-                    // Reload the table view
                 mainScreenView.tableViewContacts.reloadData()
             } else {
                 print("Could not find contact with old name")
@@ -206,6 +203,5 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource{
                 })
             }
         }
-
 }
 

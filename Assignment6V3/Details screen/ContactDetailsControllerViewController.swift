@@ -52,7 +52,7 @@ class ContactDetailsControllerViewController: UIViewController {
     
     @objc func onDeleteButtonTapped() {
         let alert = UIAlertController(title: "Delete Contact", message: "Are you sure you want to delete this contact?",
-                                      preferredStyle: .alert)
+                    preferredStyle: .alert)
             
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
             
