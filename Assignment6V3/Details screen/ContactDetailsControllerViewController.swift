@@ -10,11 +10,11 @@ import Alamofire
 
 class ContactDetailsControllerViewController: UIViewController {
 
-    var contact = Contact(name: "", email: "", phone: "")
+    var contact: Contact = Contact(name: "", email: "", phone: "")
     var contactName: String?
-    
     let detailsView = ContactDetailsView()
     let notificationCenter = NotificationCenter.default
+    let editController = AddContactController()
     
     override func loadView() {
         view = detailsView
@@ -26,7 +26,28 @@ class ContactDetailsControllerViewController: UIViewController {
      
         self.view.backgroundColor = .white
         
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Edit", style: .plain, target: self, action: #selector(onEditButtonTapped))
+        
         detailsView.deleteButton.addTarget(self, action: #selector(onDeleteButtonTapped), for: .touchUpInside)
+        
+        notificationCenter.addObserver(
+                    self,
+                    selector: #selector(notificationReceivedForDataUpdated(notification:)),
+                    name: .contactUpdated,
+                    object: nil)
+    }
+    
+    @objc func notificationReceivedForDataUpdated(notification: Notification){
+        if let contact = notification.object as? Contact {
+            detailsView.configure(with: contact)
+        } else {
+            print("No contact data received")
+        }
+    }
+    
+    @objc func onEditButtonTapped() {
+        editController.contactToEdit = contact
+        navigationController?.pushViewController(editController, animated: true)
     }
     
     @objc func onDeleteButtonTapped() {
@@ -41,7 +62,7 @@ class ContactDetailsControllerViewController: UIViewController {
                 self.deleteContact(name: uwname) { isDeleted in
                     if isDeleted {
                         print("Deleted contact name: \(uwname)") 
-                        self.notificationCenter.post(name: .contactUpdated, object: self.contact)
+                        self.notificationCenter.post(name: .contactDeleted, object: self.contact)
                         self.navigationController?.popViewController(animated: true)
                 } else {
                     print("Could not delete!")
@@ -101,7 +122,7 @@ class ContactDetailsControllerViewController: UIViewController {
         let email = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
         let phone = parts[2].trimmingCharacters(in: .whitespacesAndNewlines)
         
-        let contact = Contact(name: name, email: email, phone: phone)
+        contact = Contact(name: name, email: email, phone: phone)
         detailsView.configure(with: contact)
     
     }

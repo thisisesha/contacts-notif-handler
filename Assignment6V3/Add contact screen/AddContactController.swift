@@ -11,9 +11,11 @@ import Alamofire
 class AddContactController: UIViewController {
 
     let addContactView = AddContactView()
-    var contacts = [Contact]()
-    let mainScreenController = ViewController()
+    var contactToEdit: Contact?
+  //  let mainScreenController = ViewController()
     let notificationCenter = NotificationCenter.default
+    var edit: Bool = false
+  //  var detailsController = ContactDetailsControllerViewController()
     
     override func loadView() {
         view = addContactView
@@ -21,7 +23,7 @@ class AddContactController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Add Contact"
+        
 
         let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(hideKeyboardOnTap))
         tapRecognizer.cancelsTouchesInView = false
@@ -31,6 +33,27 @@ class AddContactController: UIViewController {
             barButtonSystemItem: .save, target: self,
             action: #selector(onSaveBarButtonTapped)
         )
+        
+        if contactToEdit != nil {
+            initializeContactFields()
+            edit = true
+            title = "Edit Contact"
+        } else {
+            edit = false
+            title = "Add Contact"
+        }
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+            // Clear fields initially
+        clearAddViewFields()
+            
+            // Then initialize fields if editing
+        if edit {
+            initializeContactFields()
+        }
     }
     
     @objc func hideKeyboardOnTap(){
@@ -39,92 +62,136 @@ class AddContactController: UIViewController {
     
     @objc func onSaveBarButtonTapped(){
         
-        
-        if let email = addContactView.emailTextField.text {
-            if !isValidEmail(email) {
-                showAlertForInvalidEmail()
-                return
-            }
-        }
-        
         if let name = addContactView.nameTextField.text,
            let email = addContactView.emailTextField.text,
            let phoneText = addContactView.phnoTextField.text{
             
+            if checkEmptyFields() {
+                showAlertForEmptyFields()
+                return
+            }
+            
             if !isValidEmail(email) {
                 showAlertForInvalidEmail()
                 return
             }
                 
-                
             let contact = Contact(name: name, email: email, phone: phoneText)
-                    
-                    //MARK: call add a new contact API endpoint...
-                    addANewContact(contact: contact)
-                    notificationCenter.post(
-                        name: .dataFromAddContactScreen,
-                        object: contact)
-                    navigationController?.popViewController(animated: true)
-                    
-                }
             
-            else{
-                if checkEmptyFields() {
-                    showAlertForEmptyFields()
-                    return
-                }
+            if edit{
+                deleteOldContactAndUpdate(contact: contact)
+                
+            } else {
+                addANewContact(contact: contact)
+                notificationCenter.post(name: .dataFromAddContactScreen, object: contact)
+                navigationController?.popViewController(animated: true)
             }
-       
-        
+            
+                    
+            } else{
+                print("Unable to fetch data")
+            }
     }
     
-    //MARK: add a new contact call: add endpoint...
+    func initializeContactFields() {
+        if let contact = contactToEdit {
+            addContactView.nameTextField.text = contact.name
+            addContactView.emailTextField.text = contact.email
+            addContactView.phnoTextField.text = contact.phone
+        }
+    }
+    
+    func deleteOldContactAndUpdate(contact: Contact){
+        if let oldContactName = contactToEdit?.name{
+            self.deleteContact(name: oldContactName) { success in
+                if success {
+                    self.addANewContact(contact: contact)
+                    let userInfo = ["updatedContact": contact, "oldContactName": oldContactName]
+                    self.notificationCenter.post(name: .contactUpdated, object: contact, userInfo: userInfo)
+                    self.navigationController?.popViewController(animated: true)
+                }
+            }
+        }
+    }
+    
+    func deleteContact(name: String, completion: @escaping (Bool) -> Void) {
+        let parameters = ["name": name]
+        
+        if let url = URL(string: APIConfigs.baseURL + "delete") {
+            AF.request(url, method: .get, parameters: parameters, encoding: URLEncoding.queryString)
+                .responseString { response in
+                
+            let status = response.response?.statusCode
+                
+            switch response.result {
+                case .success(let data):
+                    if let uwStatusCode = status {
+                        switch uwStatusCode {
+                        case 200...299:
+                            print("Contact deleted successfully")
+                            completion(true)
+                            
+                        case 400...499:
+                            print(data)
+                            completion(false)
+                            
+                        default:
+                            print(data)
+                            completion(false)
+                        }
+                    } else {
+                        completion(false)
+                    }
+                    
+                case .failure(let error):
+                    print(error)
+                    completion(false)
+                }
+            }
+        } else {
+            completion(false)
+        }
+    }
+    
+    
     func addANewContact(contact: Contact){
         if let url = URL(string: APIConfigs.baseURL+"add"){
             
-            AF.request(url, method:.post, parameters:
-                        [
-                            "name": contact.name,
-                            "email": contact.email,
-                            "phone": contact.phone
-                        ])
-                .responseString(completionHandler: { response in
-                    //MARK: retrieving the status code...
-                    let status = response.response?.statusCode
+        AF.request(url, method:.post, parameters:
+            [
+                "name": contact.name,
+                "email": contact.email,
+                "phone": contact.phone
+            ])
+            .responseString(completionHandler: { response in
                     
-                    switch response.result{
-                    case .success(let data):
-                        //MARK: there was no network error...
+            let status = response.response?.statusCode
+                    
+            switch response.result{
+                case .success(let data):
+        
+                    if let uwStatusCode = status{
+                        switch uwStatusCode{
+                            case 200...299:
+                               print("Contact added successfully")
+                                break
                         
-                        //MARK: status code is Optional, so unwrapping it...
-                        if let uwStatusCode = status{
-                            switch uwStatusCode{
-                                case 200...299:
-                                //MARK: the request was valid 200-level...
-                                self.mainScreenController.getAllContacts()
-                                self.clearAddViewFields()
-                                    break
+                            case 400...499:
+                                print(data)
+                                break
                         
-                                case 400...499:
-                                //MARK: the request was not valid 400-level...
-                                    print(data)
-                                    break
-                        
-                                default:
-                                //MARK: probably a 500-level error...
-                                    print(data)
-                                    break
-                        
-                            }
+                            default:
+                                print(data)
+                                break
                         }
-                        break
-                        
-                    case .failure(let error):
-                        //MARK: there was a network error...
-                        print(error)
-                        break
                     }
-                })
+                    break
+                        
+                case .failure(let error):
+                    print(error)
+                    break
+                }
+            })
         }else{
             showAlertForInvalidURL()
         }

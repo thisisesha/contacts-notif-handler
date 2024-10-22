@@ -47,6 +47,12 @@ class ViewController: UIViewController {
         
         notificationCenter.addObserver(
                     self,
+                    selector: #selector(notificationReceivedForDataDeleted(notification:)),
+                    name: .contactDeleted,
+                    object: nil)
+        
+        notificationCenter.addObserver(
+                    self,
                     selector: #selector(notificationReceivedForDataUpdated(notification:)),
                     name: .contactUpdated,
                     object: nil)
@@ -60,6 +66,25 @@ class ViewController: UIViewController {
         }
     }
     
+    @objc func notificationReceivedForDataUpdated(notification: Notification){
+        if let userInfo = notification.userInfo,
+            let updatedContact = userInfo["updatedContact"] as? Contact,
+            let oldContactName = userInfo["oldContactName"] as? String {
+                
+                // Find the contact by the old name (not the new one)
+            if let index = contactNames.firstIndex(of: oldContactName) {
+                    // Update the contact name in the contactNames array
+                contactNames[index] = updatedContact.name
+                    // Reload the table view
+                mainScreenView.tableViewContacts.reloadData()
+            } else {
+                print("Could not find contact with old name")
+            }
+        } else {
+            print("No contact data received")
+        }
+    }
+    
     @objc func notificationReceivedForDataChanged(notification: Notification){
         if let newContact = notification.object as? Contact {
             contactNames.append(newContact.name)
@@ -67,9 +92,10 @@ class ViewController: UIViewController {
         }
     }
     
-    @objc func notificationReceivedForDataUpdated(notification: Notification){
+    @objc func notificationReceivedForDataDeleted(notification: Notification){
         if let deletedContact = notification.object as? Contact {
             getAllContacts()
+            mainScreenView.tableViewContacts.reloadData()
         } else {
             print("No contact data received")
         }
